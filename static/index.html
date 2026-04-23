@@ -92,6 +92,7 @@
         <h1>📝 To-Do List</h1>
         <div class="input-group">
             <input type="text" id="taskInput" placeholder="Enter a task..." />
+            <input type="datetime-local" id="dueTime" />
             <button class="add-btn" onclick="addTask()">Add</button>
         </div>
 
@@ -123,6 +124,7 @@
                 if (!res.ok) return;
 
                 const tasks = await res.json();
+                checkReminders(tasks);
 
                 const list = document.getElementById("taskList");
                 list.innerHTML = "";
@@ -148,21 +150,21 @@
         }
 
         async function addTask() {
-            const input = document.getElementById("taskInput");
-            const title = input.value.trim();
+            const title = document.getElementById("taskInput").value;
+            const dueTime = document.getElementById("dueTime").value;
 
-            if (!title) return;
-
-            await fetch(API_URL, {
+            await fetch("/tasks", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": "Bearer " + token
                 },
-                body: JSON.stringify({ title })
+                body: JSON.stringify({
+                    title,
+                    due_time: dueTime
+                })
             });
 
-            input.value = "";
             fetchTasks();
         }
 
@@ -190,10 +192,41 @@
 
         fetchTasks();
 
+        async function requestNotificationPermission() {
+            if (Notification.permission !== "granted") {
+                await Notification.requestPermission();
+            }
+        }
+        requestNotificationPermission();
+
+        function checkReminders(tasks) {
+            const now = new Date();
+
+            tasks.forEach(task => {
+                if (!task.due_time) return;
+
+                const due = new Date(task.due_time);
+
+                // Trigger within 1 minute window
+                console.log("hiii")
+                if (
+                    !task.notified &&
+                    due <= now &&
+                    now - due < 60000
+                ) {
+                    new Notification("⏰ Reminder", {
+                        body: task.title
+                    });
+                    task.notified = true; // local flag
+                }
+            });
+        }
+
         function logout() {
-    localStorage.removeItem("token");
-    window.location.href = "/static/login.html";
-}
+            localStorage.removeItem("token");
+            window.location.href = "/static/login.html";
+        }
+        setInterval(fetchTasks, 60000);
     </script>
 
 </body>
