@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>To-Do App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 50px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .add-btn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .task {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fafafa;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+
+        .task.completed span {
+            text-decoration: line-through;
+            color: gray;
+        }
+
+        .actions button {
+            margin-left: 5px;
+        }
+
+        .complete-btn {
+            background: #2196F3;
+            color: white;
+        }
+
+        .delete-btn {
+            background: #f44336;
+            color: white;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <button onclick="logout()" style="float:right;margin-right: 50px;">Logout</button>
+    <div class="container">
+        <h1>📝 To-Do List</h1>
+        <div class="input-group">
+            <input type="text" id="taskInput" placeholder="Enter a task..." />
+            <button class="add-btn" onclick="addTask()">Add</button>
+        </div>
+
+        <div id="taskList"></div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+            window.location.href = "/login.html";
+        }
+        const API_URL = "/tasks";
+
+        async function fetchTasks() {
+            try {
+                const res = await fetch(API_URL, {
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    }
+                });
+
+                if (res.status === 401) {
+                    localStorage.removeItem("token");
+                    window.location.href = "/login.html";
+                    return;
+                }
+
+                if (!res.ok) return;
+
+                const tasks = await res.json();
+
+                const list = document.getElementById("taskList");
+                list.innerHTML = "";
+
+                tasks.forEach(task => {
+                    const div = document.createElement("div");
+                    div.className = "task " + (task.completed ? "completed" : "");
+
+                    div.innerHTML = `
+                <span>${task.title}</span>
+                <div class="actions">
+                    <button class="complete-btn" onclick="toggleTask('${task.id}', ${task.completed})">✔</button>
+                    <button class="delete-btn" onclick="deleteTask('${task.id}')">✖</button>
+                </div>
+            `;
+
+                    list.appendChild(div);
+                });
+
+            } catch (err) {
+                console.error("Error:", err);
+            }
+        }
+
+        async function addTask() {
+            const input = document.getElementById("taskInput");
+            const title = input.value.trim();
+
+            if (!title) return;
+
+            await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({ title })
+            });
+
+            input.value = "";
+            fetchTasks();
+        }
+
+        async function toggleTask(id, completed) {
+            await fetch(`${API_URL}/${id}?completed=${!completed}`, {
+                method: "PATCH",
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+
+            fetchTasks();
+        }
+
+        async function deleteTask(id) {
+            await fetch(`${API_URL}/${id}`, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+
+            fetchTasks();
+        }
+
+        fetchTasks();
+
+        function logout() {
+    localStorage.removeItem("token");
+    window.location.href = "/static/login.html";
+}
+    </script>
+
+</body>
+
+</html>
