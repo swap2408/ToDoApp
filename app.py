@@ -23,7 +23,8 @@ def serialize(task):
     return {
         "id": str(task["_id"]),
         "title": task["title"],
-        "completed": task["completed"]
+        "completed": task["completed"],
+        "due_time":task["due_time"]
     }
 
 # 🔐 Auth middleware
@@ -40,7 +41,6 @@ def serve_home():
 # 👤 Signup
 @app.post("/signup")
 def signup(data: dict):
-    print(data, "dataaaaaa")
     if users_collection.find_one({"email": data["email"]}):
         raise HTTPException(status_code=400, detail="User already exists")
 
@@ -55,7 +55,6 @@ def signup(data: dict):
 @app.post("/login")
 def login(data: dict):
     user = users_collection.find_one({"email": data["email"]})
-    print("hii")
     if not user or not verify_password(data["password"], user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -74,7 +73,8 @@ def create_task(data: dict, user_id: str = Depends(get_current_user)):
     task = {
         "title": data["title"],
         "completed": False,
-        "userId": user_id
+        "userId": user_id,
+        "due_time": data.get("due_time")  # ISO string
     }
     tasks_collection.insert_one(task)
     return {"message": "Task created"}
